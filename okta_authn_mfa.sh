@@ -15,14 +15,17 @@ usage () {
 
 requirements () {
   local jqFound="FOUND"
+  local curlFound="FOUND"
 
   hash jq 2>/dev/null || jqFound="NOT FOUND"
+  hash curl 2>/dev/null || curlFound="NOT FOUND"
 
-  if [[ ${jqFound} != "FOUND" ]]
+  if [[ ${jqFound} != "FOUND"  || ${curlFound} != "FOUND" ]]
     then
       echo "Some requirements are not met:"
       echo
       echo "jq is ${jqFound}"
+      echo "curl is ${curlFound}"
       echo
       echo "These tools can be installed with brew on mac."
       echo "for more information, go to: https://brew.sh"
@@ -41,16 +44,16 @@ authn () {
   local raw=`curl -s -H "Content-Type: application/json" -d "{\"username\": \"${username}\", \"password\": \"${password}\"}" ${orgUrl}/api/v1/authn`
 
   local status=`echo $raw | jq -r '.status'`
-
+  
   if [[ "${status}" == "SUCCESS" ]]
     then
       sessionToken=`echo ${raw} | jq -r '.sessionToken'`
   elif [[ "${status}" == "MFA_ENROLL" ]]
     then
-      handle_enroll ${raw} ${orgUrl}
+      handle_enroll "${raw}" "${orgUrl}"
   elif [[ "${status}" == "MFA_REQUIRED" ]]
     then
-      handle_push ${raw} ${orgUrl}
+      handle_push "${raw}" "${orgUrl}"
   else
     echo "Something went wrong. Here's some raw output:"
     echo ${raw} | jq
@@ -60,8 +63,8 @@ authn () {
 }
 
 handle_enroll () {
-  local raw=$1
-  local orgUrl=$2
+  local raw="$1"
+  local orgUrl="$2"
   
   factorType=`echo ${raw} | jq -r '._embedded.factors[] | select(.factorType == "push") | .factorType'`
   
@@ -122,13 +125,13 @@ handle_enroll () {
 }
 
 handle_push () {
-  local raw=$1
-  local orgUrl=$2
-
+  local raw="$1"
+  local orgUrl="$2"
+  
   local stateToken=`echo $raw | jq -r '.stateToken'`
   local pushFactorId=`echo $raw | jq -r '._embedded.factors[] | select(.factorType == "push") | .id'`
-
-  echo -e "Congratulations! You got a ${GREEN}stateToken${NC}: ${RED}${stateToken}i${NC}. That's used in a multi-step authentication flow, like MFA."
+  
+  echo -e "Congratulations! You got a ${GREEN}stateToken${NC}: ${RED}${stateToken}${NC}. That's used in a multi-step authentication flow, like MFA."
   echo
 
   echo "Sending Okta Verify push notification..."
