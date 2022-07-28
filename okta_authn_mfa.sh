@@ -144,6 +144,13 @@ handle_push () {
       local status=`echo ${verifyAndPoll} | jq -r .status`
       local tries=$((tries+1))
       echo "Polling for push approve..."
+      local pollingChallenge=`echo ${verifyAndPoll} | jq -r ._embedded.factor._embedded.challenge.correctAnswer`
+      if [[ ! "$pollingChallenge" = "null" ]]
+        then
+          echo "Polling Challenge Correct Answer is: $pollingChallenge"
+          echo
+	        echo "Polling for push confirmation..."
+      fi
       sleep 6
   done
 
